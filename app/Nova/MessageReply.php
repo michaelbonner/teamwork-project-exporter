@@ -2,6 +2,7 @@
 
 namespace App\Nova;
 
+use App\Models\File;
 use Illuminate\Http\Request;
 use Laravel\Nova\Fields\BelongsTo;
 use Laravel\Nova\Fields\Code;
@@ -49,7 +50,23 @@ class MessageReply extends Resource
             BelongsTo::make('message'),
             Text::make('body', function () {
                 return $this->data['body'];
-            })
+            }),
+            Text::make('attachments', function () {
+                if (!count($this->data['attachments'])) {
+                    return '';
+                }
+                $returnBody = '<ul>';
+                foreach ($this->data['attachments'] as $attachment) {
+                    $file = File::where('teamwork_id', $attachment['id'])->first();
+                    $returnBody .= "<li>";
+                    $returnBody .= "<a href='{$file->publicLink}'>";
+                    $returnBody .= $file->name;
+                    $returnBody .= "</a>";
+                    $returnBody .= "</li>";
+                }
+                $returnBody .= '</ul>';
+                return $returnBody;
+            })->asHtml()->showOnIndex(),
         ];
     }
 

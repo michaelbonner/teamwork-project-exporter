@@ -2,6 +2,7 @@
 
 namespace App\Nova;
 
+use App\Models\File;
 use Illuminate\Http\Request;
 use Laravel\Nova\Fields\BelongsTo;
 use Laravel\Nova\Fields\Code;
@@ -49,7 +50,23 @@ class Task extends Resource
             BelongsTo::make('taskList'),
             Text::make('status', function () {
                 return $this->data['completed'] ? 'Complete' : 'In Progress';
-            })
+            }),
+            Text::make('attachments', function () {
+                if (empty($this->data['attachments']) || !count($this->data['attachments'])) {
+                    return '';
+                }
+                $returnBody = '<ul>';
+                foreach ($this->data['attachments'] as $attachment) {
+                    $file = File::where('teamwork_id', $attachment['id'])->first();
+                    $returnBody .= "<li>";
+                    $returnBody .= "<a href='{$file->publicLink}'>";
+                    $returnBody .= $file->name;
+                    $returnBody .= "</a>";
+                    $returnBody .= "</li>";
+                }
+                $returnBody .= '</ul>';
+                return $returnBody;
+            })->asHtml()->showOnIndex(),
         ];
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Nova;
 
+use App\Models\File;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Laravel\Nova\Fields\Code;
@@ -56,6 +57,22 @@ class Message extends Resource
             Date::make('created', function () {
                 return Carbon::parse($this->data['posted-on']);
             })->showOnIndex()->sortable(),
+            Text::make('attachments', function () {
+                if (!count($this->data['attachments'])) {
+                    return '';
+                }
+                $returnBody = '<ul>';
+                foreach ($this->data['attachments'] as $attachment) {
+                    $file = File::where('teamwork_id', $attachment['id'])->first();
+                    $returnBody .= "<li>";
+                    $returnBody .= "<a href='{$file->publicLink}'>";
+                    $returnBody .= $file->name;
+                    $returnBody .= "</a>";
+                    $returnBody .= "</li>";
+                }
+                $returnBody .= '</ul>';
+                return $returnBody;
+            })->asHtml()->showOnIndex(),
             HasMany::make('messageReplies')
         ];
     }
