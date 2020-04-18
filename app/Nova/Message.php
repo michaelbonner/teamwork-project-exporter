@@ -38,6 +38,8 @@ class Message extends Resource
         'name'
     ];
 
+    public static $perPageViaRelationship = 25;
+
     /**
      * Get the fields displayed by the resource.
      *

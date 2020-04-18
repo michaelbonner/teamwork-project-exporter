@@ -33,6 +33,8 @@ class User extends Resource
         'id', 'name', 'email',
     ];
 
+    public static $perPageViaRelationship = 25;
+
     /**
      * Get the fields displayed by the resource.
      *
