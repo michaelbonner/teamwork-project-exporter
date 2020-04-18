@@ -2,10 +2,13 @@
 
 namespace App\Nova;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Laravel\Nova\Fields\Code;
+use Laravel\Nova\Fields\Date;
 use Laravel\Nova\Fields\HasMany;
 use Laravel\Nova\Fields\ID;
+use Laravel\Nova\Fields\Number;
 use Laravel\Nova\Fields\Text;
 use Laravel\Nova\Http\Requests\NovaRequest;
 
@@ -31,7 +34,7 @@ class Message extends Resource
      * @var array
      */
     public static $search = [
-        'id', 'name'
+        'name'
     ];
 
     /**
@@ -44,8 +47,15 @@ class Message extends Resource
     {
         return [
             ID::make()->sortable(),
+            Number::make('teamwork_id')->sortable(),
             Text::make('name')->sortable(),
             Code::make('data')->json(),
+            Text::make('body', function () {
+                return $this->data['html-body'];
+            })->asHtml()->showOnIndex(),
+            Date::make('created', function () {
+                return Carbon::parse($this->data['posted-on']);
+            })->showOnIndex()->sortable(),
             HasMany::make('messageReplies')
         ];
     }
