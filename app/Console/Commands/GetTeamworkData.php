@@ -3,12 +3,18 @@
 
 namespace App\Console\Commands;
 
+use App\Models\File;
+use App\Models\Message;
+use App\Models\MessageReply;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskComment;
 use App\Models\TaskList;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 class GetTeamworkData extends Command
 {
@@ -43,13 +49,16 @@ class GetTeamworkData extends Command
      */
     public function handle()
     {
-        $projectIds = Project::orderBy('teamwork_id')->get()->pluck('teamwork_id')->toArray();
-        array_unshift($projectIds, 'new project');
-        $projectId = $this->choice('What project ID?', $projectIds, 0);
-        if ($projectId == 'new project') {
-            $projectId = $this->ask('What is the project ID?');
-        }
+        // $projectIds = Project::orderBy('teamwork_id')->get()->pluck('teamwork_id')->toArray();
+        // array_unshift($projectIds, 'new project');
+        // $projectId = $this->choice('What project ID?', $projectIds, 0);
+        // if ($projectId == 'new project') {
+        //     $projectId = $this->ask('What is the project ID?');
+        // }
 
+        $projectId = 421958;
+
+        // Project
         $project = $this->getJson("/projects/{$projectId}.json");
         Project::updateOrCreate(
             [
@@ -61,6 +70,7 @@ class GetTeamworkData extends Command
             ]
         );
 
+        // Task Lists
         $taskLists = $this->getJson("/projects/{$projectId}/tasklists.json");
         foreach ($taskLists['tasklists'] as $taskList) {
             TaskList::updateOrCreate(
@@ -74,6 +84,7 @@ class GetTeamworkData extends Command
             );
         }
 
+        // Tasks
         $tasks = $this->getJson("/projects/{$projectId}/tasks.json?getFiles=true");
         foreach ($tasks['todo-items'] as $task) {
             Task::updateOrCreate(
@@ -88,6 +99,7 @@ class GetTeamworkData extends Command
             );
         }
 
+        // Tasks Comments
         Task::where('data->comments-count', '>', 0)->each(function ($task) {
             $taskComments = $this->getJson("/tasks/{$task->teamwork_id}/comments.json");
             foreach ($taskComments['comments'] as $comment) {
@@ -103,21 +115,86 @@ class GetTeamworkData extends Command
                 );
             }
         });
+
+        // Messages
+        $messages = $this->getJson("/projects/{$projectId}/posts.json");
+        foreach ($messages['posts'] as $message) {
+            if ($message['attachments-count']) {
+                $message = $this->getJson("/posts/{$message['id']}.json")['post'];
+            }
+            Message::updateOrCreate(
+                [
+                    'teamwork_id' => $message['id']
+                ],
+                [
+                    'name' => $message['title'],
+                    'data' => $message
+                ]
+            );
+        }
+
+        // Message Replies
+        Message::each(function ($message) {
+            $replies = $this->getJson("/messages/{$message->teamwork_id}/replies.json");
+            foreach ($replies['messageReplies'] as $reply) {
+                MessageReply::updateOrCreate(
+                    [
+                        'teamwork_id' => $reply['id']
+                    ],
+                    [
+                        'message_id' => $message->id,
+                        'data' => $reply
+                    ]
+                );
+            }
+        });
+
+        // Files
+        $files = $this->getJson("/projects/{$projectId}/files.json");
+        foreach ($files['project']['files'] as $file) {
+            $teamworkFile = $this->getJson("/files/{$file['id']}.json");
+
+            $file = File::updateOrCreate(
+                [
+                    'teamwork_id' => $teamworkFile['file']['id']
+                ],
+                [
+                    'name' => $teamworkFile['file']['name'],
+                    'data' => $teamworkFile['file']
+                ]
+            );
+
+            if (!Storage::exists($file->filesystemPath)) {
+                dd(
+                    'File does not exist',
+                    $file->filesystemPath,
+                    $teamworkFile['file']
+                );
+            }
+        }
     }
 
-    protected function getJson($route)
+    protected function getJson($route, $cache = true)
     {
-        return Http::withBasicAuth(
-            config('services.teamwork.key'),
-            config('services.teamwork.key')
-        )->get(config('services.teamwork.url') . $route)->json();
+        if ($cache) {
+            return Cache::remember($route, Carbon::now()->addDays(15), function () use ($route) {
+                return $this->makeRequest($route)->json();
+            });
+        }
+
+        return $this->makeRequest($route)->json();
     }
 
     protected function getHeaders($route)
     {
+        return $this->makeRequest($route)->headers();
+    }
+
+    protected function makeRequest($route)
+    {
         return Http::withBasicAuth(
             config('services.teamwork.key'),
             config('services.teamwork.key')
-        )->get(config('services.teamwork.url') . $route)->headers();
+        )->get(config('services.teamwork.url') . $route);
     }
 }
