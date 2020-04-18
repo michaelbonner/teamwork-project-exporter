@@ -11,4 +11,9 @@ class TaskComment extends Model
     ];
 
     protected $guarded = [];
+
+    public function task()
+    {
+        return $this->belongsTo(Task::class);
+    }
 }

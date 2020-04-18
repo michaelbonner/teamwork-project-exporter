@@ -2,30 +2,28 @@
 
 namespace App\Nova;
 
-use App\Models\File;
 use Illuminate\Http\Request;
 use Laravel\Nova\Fields\BelongsTo;
 use Laravel\Nova\Fields\Code;
-use Laravel\Nova\Fields\HasMany;
 use Laravel\Nova\Fields\ID;
 use Laravel\Nova\Fields\Text;
 use Laravel\Nova\Http\Requests\NovaRequest;
 
-class Task extends Resource
+class TaskComment extends Resource
 {
     /**
      * The model the resource corresponds to.
      *
      * @var string
      */
-    public static $model = \App\Models\Task::class;
+    public static $model = \App\Models\TaskComment::class;
 
     /**
      * The single value that should be used to represent the resource when being displayed.
      *
      * @var string
      */
-    public static $title = 'name';
+    public static $title = 'id';
 
     /**
      * The columns that should be searched.
@@ -33,7 +31,7 @@ class Task extends Resource
      * @var array
      */
     public static $search = [
-        'id', 'name'
+        'id',
     ];
 
     /**
@@ -48,15 +46,12 @@ class Task extends Resource
             ID::make()->sortable(),
             Text::make('name')->sortable(),
             Code::make('data')->json(),
-            BelongsTo::make('taskList'),
-            Text::make('status', function () {
-                return $this->data['completed'] ? 'Complete' : 'In Progress';
+            BelongsTo::make('task'),
+            Text::make('body', function () {
+                return $this->data['body'];
             }),
-            Text::make('Comments', function () {
-                return $this->taskComments()->count();
-            })->asHtml()->showOnIndex(),
             Text::make('attachments', function () {
-                if (empty($this->data['attachments']) || !count($this->data['attachments'])) {
+                if (!count($this->data['attachments'])) {
                     return '';
                 }
                 $returnBody = '<ul>';
@@ -71,7 +66,6 @@ class Task extends Resource
                 $returnBody .= '</ul>';
                 return $returnBody;
             })->asHtml()->showOnIndex(),
-            HasMany::make('taskComments'),
         ];
     }
 
