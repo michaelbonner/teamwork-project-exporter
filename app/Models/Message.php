@@ -11,4 +11,9 @@ class Message extends Model
     ];
 
     protected $guarded = [];
+
+    public function messageReplies()
+    {
+        return $this->hasMany(MessageReply::class);
+    }
 }

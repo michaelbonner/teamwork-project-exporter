@@ -11,4 +11,9 @@ class MessageReply extends Model
     ];
 
     protected $guarded = [];
+
+    public function message()
+    {
+        return $this->belongsTo(Message::class);
+    }
 }

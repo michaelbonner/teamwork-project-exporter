@@ -11,4 +11,9 @@ class Task extends Model
     ];
 
     protected $guarded = [];
+
+    public function taskList()
+    {
+        return $this->belongsTo(TaskList::class);
+    }
 }
